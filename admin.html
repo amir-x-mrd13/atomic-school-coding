@@ -5,21 +5,48 @@
 body{background:#08111f;color:#eef6ff;min-height:100vh;padding:20px;font-family:inherit}.wrap{max-width:1100px;margin:24px auto}.card{background:#121f34;border:1px solid #29415f;border-radius:16px;padding:20px;margin:16px 0}h1{font-size:clamp(25px,5vw,34px);margin:12px 0}h2{font-size:20px;margin-bottom:12px}p{color:#c2d5eb;line-height:1.9}label{display:block;margin:12px 0 6px}input,textarea,select{box-sizing:border-box;width:100%;padding:11px;border:1px solid #34516f;border-radius:9px;background:#071523;color:#fff;font:inherit}textarea{min-height:100px}button,.link{display:inline-block;border:0;border-radius:9px;padding:10px 15px;background:#1267b3;color:white;font:inherit;text-decoration:none;cursor:pointer;margin:6px 4px 6px 0}button.secondary{background:#344861}.hidden{display:none!important}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}.submission{border:1px solid #29415f;border-radius:13px;padding:16px;background:#0c192a}.meta{font-size:13px;color:#91abc7}.status{white-space:pre-wrap;line-height:1.8}.pill{display:inline-block;background:#183e60;border-radius:999px;padding:4px 9px;font-size:12px}.answer{white-space:pre-wrap;overflow-wrap:anywhere;color:#e6f0fb}
 </style></head><body><main class="wrap">
 <a class="link" href="./index.html">← بازگشت به سایت</a><h1>⚛️ پنل استاد</h1><p>با حساب استاد وارد شوید تا تکالیف ارسال‌شده را ببینید، فایل‌ها را باز کنید و نمره و بازخورد ثبت کنید.</p>
-<section id="loginCard" class="card"><h2>ورود استاد</h2><form id="loginForm"><label for="email">ایمیل استاد</label><input id="email" type="email" required autocomplete="username"><label for="password">رمز عبور Firebase</label><input id="password" type="password" required autocomplete="current-password"><button type="submit">ورود</button></form><p id="loginStatus" class="status" role="status"></p></section>
-<section id="dashboard" class="hidden"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h2>تکالیف دانش‌آموزان</h2><button id="refreshBtn">بارگذاری دوباره</button><button id="logoutBtn" class="secondary">خروج</button></div><p id="dashStatus" class="status" role="status"></p><div id="submissions" class="grid"></div></div></section>
+<section id="loginCard" class="card"><h2>ورود استاد</h2><form id="loginForm"><label for="visitorName">نام دانش‌آموز/فرد (در صورت وارد کردن)</label><input id="visitorName" type="text" maxlength="100" autocomplete="name" placeholder="نامی که وارد شده است"><label for="email">ایمیل استاد</label><input id="email" type="email" required autocomplete="username"><label for="password">رمز عبور Firebase</label><input id="password" type="password" required autocomplete="current-password"><button type="submit">ورود</button></form><p id="loginStatus" class="status" role="status"></p></section>
+<section id="dashboard" class="hidden"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h2>تکالیف دانش‌آموزان</h2><button id="refreshBtn">بارگذاری دوباره</button><button id="logoutBtn" class="secondary">خروج</button></div><p id="dashStatus" class="status" role="status"></p><h2>گزارش تلاش‌های ورود به مدیریت</h2><p>دستگاه/مرورگر تقریبی، زمان و نام واردشده نمایش داده می‌شود؛ این اطلاعات به‌تنهایی هویت واقعی دانش‌آموز یا رایانه را اثبات نمی‌کند.</p><div id="accessLogs" class="grid"></div><h2>تکالیف دانش‌آموزان</h2><div id="submissions" class="grid"></div></div></section>
 </main>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import {getFirestore,collection,getDocs,query,orderBy,doc,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut,signInAnonymously} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {getFirestore,collection,getDocs,query,orderBy,doc,updateDoc,addDoc,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import {getStorage,ref,getDownloadURL} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
 import {firebaseConfig} from "./firebase-config.js";
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),storage=getStorage(app);
-const loginCard=document.getElementById('loginCard'),dashboard=document.getElementById('dashboard'),loginStatus=document.getElementById('loginStatus'),dashStatus=document.getElementById('dashStatus'),list=document.getElementById('submissions');
-document.getElementById('loginForm').addEventListener('submit',async e=>{e.preventDefault();loginStatus.textContent='در حال ورود...';try{await signInWithEmailAndPassword(auth,document.getElementById('email').value.trim(),document.getElementById('password').value)}catch(err){loginStatus.textContent='ورود ناموفق بود. ایمیل، رمز و فعال بودن Email/Password را بررسی کنید ('+(err.code||'unknown')+').'}});
-onAuthStateChanged(auth,user=>{if(user&&!user.isAnonymous){loginCard.classList.add('hidden');dashboard.classList.remove('hidden');loadSubmissions()}else{loginCard.classList.remove('hidden');dashboard.classList.add('hidden')}});
+const loginCard=document.getElementById('loginCard'),dashboard=document.getElementById('dashboard'),loginStatus=document.getElementById('loginStatus'),dashStatus=document.getElementById('dashStatus'),list=document.getElementById('submissions'),accessLogs=document.getElementById('accessLogs');
+async function logAccessAttempt(){
+ try {
+  if (!auth.currentUser) await signInAnonymously(auth);
+  const ua=navigator.userAgent||'نامشخص';
+  const device=/Android/i.test(ua)?'موبایل اندرویدی':/iPhone|iPad/i.test(ua)?'دستگاه اپل':/Windows/i.test(ua)?'رایانه ویندوز':/Macintosh/i.test(ua)?'رایانه مک':/Linux/i.test(ua)?'رایانه لینوکس':'دستگاه/مرورگر نامشخص';
+  await addDoc(collection(db,'managementAccessLogs'),{
+   enteredName:document.getElementById('visitorName').value.trim().slice(0,100),
+   event:'login_attempt',device, userAgent:ua.slice(0,300), createdAt:serverTimestamp()
+  });
+ } catch(err) { console.warn('Access log was not saved',err.code||err); }
+}
+document.getElementById('loginForm').addEventListener('submit',async e=>{e.preventDefault();loginStatus.textContent='در حال ثبت تلاش و ورود...';await logAccessAttempt();try{await signInWithEmailAndPassword(auth,document.getElementById('email').value.trim(),document.getElementById('password').value)}catch(err){loginStatus.textContent='ورود ناموفق بود. ایمیل، رمز و فعال بودن Email/Password را بررسی کنید ('+(err.code||'unknown')+').'}});
+onAuthStateChanged(auth,user=>{if(user&&!user.isAnonymous){loginCard.classList.add('hidden');dashboard.classList.remove('hidden');loadSubmissions();loadAccessLogs()}else{loginCard.classList.remove('hidden');dashboard.classList.add('hidden')}});
 document.getElementById('logoutBtn').addEventListener('click',()=>signOut(auth));
 document.getElementById('refreshBtn').addEventListener('click',loadSubmissions);
+async function loadAccessLogs(){
+ accessLogs.replaceChildren();
+ try{
+  const snap=await getDocs(query(collection(db,'managementAccessLogs'),orderBy('createdAt','desc')));
+  if(snap.empty){accessLogs.textContent='هنوز گزارشی ثبت نشده است.';return}
+  for(const item of snap.docs){
+   const d=item.data(),card=document.createElement('article');card.className='submission';
+   const heading=document.createElement('h3');heading.textContent='تلاش برای ورود به مدیریت';card.append(heading);
+   const who=document.createElement('p');who.textContent='نام واردشده: '+(d.enteredName||'نام وارد نشده');card.append(who);
+   const device=document.createElement('p');device.textContent='دستگاه تقریبی: '+(d.device||'نامشخص');card.append(device);
+   const date=document.createElement('p');date.className='meta';date.textContent='زمان: '+(d.createdAt?.toDate?.().toLocaleString('fa-IR')||'زمان ثبت نامشخص');card.append(date);
+   const ua=document.createElement('p');ua.className='meta';ua.textContent='اطلاعات مرورگر: '+(d.userAgent||'—');card.append(ua);
+   accessLogs.append(card);
+  }
+ }catch(err){accessLogs.textContent='خواندن گزارش‌ها ناموفق بود؛ قوانین Firestore را بررسی کنید ('+(err.code||'unknown')+').'}
+}
 async function loadSubmissions(){
  list.replaceChildren();dashStatus.textContent='در حال دریافت تکالیف...';
  try{

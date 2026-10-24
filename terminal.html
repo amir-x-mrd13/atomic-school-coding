@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ترمینال پایتون | مدرسه انرژی اتمی</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1420;--panel:#101722;--bar:#1b2736;--line:#293548;--text:#d7e3f4;--muted:#8294ad;--green:#79e2a8;--blue:#8dbaff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Tahoma,"Segoe UI",sans-serif;padding:22px}
+.wrap{max-width:1000px;margin:auto}.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.top h1{font-size:20px;margin:0}.top p{color:var(--muted);margin:6px 0 0;font-size:13px}
+.window{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel);box-shadow:0 18px 50px #0004}
+.titlebar{background:var(--bar);padding:12px 15px;display:flex;align-items:center;gap:8px;direction:ltr}.dot{width:9px;height:9px;border-radius:50%}.red{background:#ff6b6b}.yellow{background:#ffd166}.green{background:#06d6a0}.filename{margin-left:8px;font:13px monospace;color:#c8d7ee}.lang{margin-left:auto;color:#8de7ce;font:12px monospace}
+.editorarea{display:grid;grid-template-columns:42px 1fr;min-height:300px;direction:ltr}.gutter{padding:17px 12px;text-align:right;color:#62748e;border-right:1px solid var(--line);font:14px/1.7 monospace;white-space:pre;user-select:none}.editor{width:100%;min-height:300px;resize:vertical;border:0;outline:0;background:transparent;color:#c6d8f2;padding:17px 16px;font:14px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;direction:ltr;text-align:left;tab-size:4}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 15px;border-top:1px solid var(--line);background:#121c2a}.btn{border:1px solid #38516e;border-radius:8px;background:#20334a;color:white;padding:10px 15px;cursor:pointer;font-weight:600}.btn.primary{background:#176b4a;border-color:#278b64}.btn:disabled{opacity:.6;cursor:wait}.hint{font-size:12px;color:var(--muted);margin-right:auto}
+.outputhead{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid var(--line);font-size:13px}.status{color:var(--muted)}.output{direction:ltr;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;min-height:95px;max-height:350px;overflow:auto;padding:16px;font:14px/1.6 ui-monospace,monospace;color:var(--green);margin:0}.output.error{color:#ff9d9d}.foot{font-size:12px;color:var(--muted);line-height:1.8;margin-top:13px}
+@media(max-width:600px){body{padding:12px}.editorarea{grid-template-columns:32px 1fr}.editor{font-size:13px}.hint{width:100%;margin:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div><h1>ترمینال پایتون ⚛️</h1><p>کدت رو بنویس و روی «اجرا» بزن.</p></div></div>
+  <section class="window" aria-label="ویرایشگر کد پایتون">
+    <div class="titlebar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span><span class="filename">main.py</span><span class="lang">Python 3</span></div>
+    <div class="editorarea"><div class="gutter" id="gutter">1</div><textarea class="editor" id="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="کد پایتون"># کد پایتون خود را اینجا بنویس
+print("Hello, world!")
+</textarea></div>
+    <div class="actions"><button class="btn primary" id="run">▶ اجرای کد</button><button class="btn" id="clear">پاک‌کردن خروجی</button><span class="hint" id="hint">بار اول برای آماده‌شدن مفسر، اینترنت لازم است.</span></div>
+    <div class="outputhead"><strong>خروجی برنامه</strong><span class="status" id="status">مفسر هنوز بارگذاری نشده</span></div>
+    <pre class="output" id="output">برای اجرای کد، روی «اجرای کد» بزن.</pre>
+  </section>
+  <p class="foot">این صفحه از Pyodide برای اجرای پایتون داخل مرورگر استفاده می‌کند. کد در مرورگر اجرا می‌شود و به سرور سایت ارسال نمی‌شود. بعضی قابلیت‌های پایتون که به سیستم‌عامل یا نصب بسته‌های خاص وابسته‌اند ممکن است کار نکنند. این محیط را برای کدهای ناشناسِ بسیار سنگین یا استفاده‌های حساس مناسب فرض نکن.</p>
+</div>
+<script>
+const codeEl=document.getElementById('code'),gutter=document.getElementById('gutter'),out=document.getElementById('output'),statusEl=document.getElementById('status'),runBtn=document.getElementById('run');
+let pyodide=null, loading=null;
+function updateLines(){const n=codeEl.value.split('\n').length;gutter.textContent=Array.from({length:n},(_,i)=>i+1).join('\n')}
+codeEl.addEventListener('input',updateLines);codeEl.addEventListener('scroll',()=>{gutter.scrollTop=codeEl.scrollTop});
+codeEl.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const a=codeEl.selectionStart,b=codeEl.selectionEnd;codeEl.setRangeText('    ',a,b,'end')}if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();runCode()}});
+document.getElementById('clear').addEventListener('click',()=>{out.textContent='';out.classList.remove('error')});
+async function ensurePython(){
+ if(pyodide)return pyodide;if(loading)return loading;
+ loading=(async()=>{statusEl.textContent='در حال بارگذاری پایتون…';document.getElementById('hint').textContent='در حال دریافت مفسر پایتون از CDN…';
+  const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js';
+  await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(new Error('بارگذاری مفسر ناموفق بود. اتصال اینترنت را بررسی کن.'));document.head.appendChild(script)});
+  pyodide=await loadPyodide();return pyodide;
+ })();try{return await loading}catch(e){loading=null;throw e}
+}
+async function runCode(){runBtn.disabled=true;out.classList.remove('error');out.textContent='';try{
+ const py=await ensurePython();statusEl.textContent='در حال اجرا…';let captured='';
+ py.setStdout({batched:s=>{captured+=s+'\n'}});py.setStderr({batched:s=>{captured+=s+'\n'}});
+ try{await py.runPythonAsync(codeEl.value);out.textContent=captured.trimEnd()||'(برنامه اجرا شد؛ خروجی‌ای تولید نشد)';statusEl.textContent='اجرا تمام شد';}
+ catch(err){out.textContent=(captured?captured:'')+String(err);out.classList.add('error');statusEl.textContent='خطا در اجرای برنامه';}
+ document.getElementById('hint').textContent='می‌توانی کد را تغییر بدهی و دوباره اجرا کنی.';
+ }catch(err){out.textContent=String(err);out.classList.add('error');statusEl.textContent='مفسر بارگذاری نشد';}
+ finally{runBtn.disabled=false}
+}
+runBtn.addEventListener('click',runCode);updateLines();
+</script>
+</body>
+</html>

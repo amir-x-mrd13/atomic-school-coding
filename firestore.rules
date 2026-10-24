@@ -6,6 +6,21 @@ service cloud.firestore {
         && request.auth.token.email_verified == true
         && request.auth.token.email == 'amir.mrd186@gmail.com';
     }
+
+    match /managementAccessLogs/{logId} {
+      // لاگ ورود شامل رمز نیست. کاربر ناشناس فقط می‌تواند یک گزارش محدود بسازد.
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['enteredName','event','device','userAgent','createdAt'])
+        && request.resource.data.enteredName is string
+        && request.resource.data.enteredName.size() <= 100
+        && request.resource.data.event == 'login_attempt'
+        && request.resource.data.device is string
+        && request.resource.data.device.size() <= 80
+        && request.resource.data.userAgent is string
+        && request.resource.data.userAgent.size() <= 300;
+      allow read, delete: if isTeacher();
+      allow update: if false;
+    }
     match /submissions/{submissionId} {
       // دانش‌آموز فقط سندی برای شناسه ورود ناشناس خودش ایجاد می‌کند؛ فهرست برای دانش‌آموزان قابل خواندن نیست.
       allow create: if request.auth != null

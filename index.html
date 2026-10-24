@@ -43,14 +43,7 @@
   </head>
   <body>
 
-<section class="terminal-entry" style="max-width:1100px;margin:22px auto;padding:16px;border:1px solid #29466b;border-radius:14px;background:#101b2b;color:#eef5ff;text-align:center">
-  <h2 style="margin:0 0 8px">ترمینال پایتون ⚛️</h2>
-  <p style="margin:0 0 12px">کد پایتونت رو بنویس و داخل مرورگر اجرا کن.</p>
-  <a href="terminal.html" style="display:inline-block;padding:10px 18px;border-radius:9px;background:#176b4a;color:#fff;text-decoration:none;font-weight:bold">ورود به ترمینال</a>
-</section>
-
-
-    <section class="entry-screen" id="entry-screen" aria-label="انتخاب نوع ورود">
+<section class="entry-screen" id="entry-screen" aria-label="انتخاب نوع ورود">
       <div class="entry-card">
         <div class="entry-mark" aria-hidden="true">⚛</div>
         <h1 class="entry-title">مدرسه انرژی اتمی</h1>
@@ -127,28 +120,7 @@
       <!--------------- project items -------------->
       <div class="project-container">
         <!------ AI ------>
-        <section class="ai-project">
-          <img src="./asesst/imges/AI.png" alt="" class="ai-img" />
-          <!-- down -->
-          <div class="ai-down">
-            <h2 class="ai-title">برنامه چت بات</h2>
-            <p class="ai-text">
-              ساختن برنامه چت بات با استفاده از سایت OpenRouter
-            </p>
-            <!-- info -->
-            <div class="ai-info">
-              <p class="ai-Surface">🟢 مبتدی</p>
-              <div style="display: flex; gap: 10px">
-                <p class="ai-lang">python</p>
-                <p class="ai-lang">api key</p>
-              </div>
-            </div>
-            <!-- btn -->
-            <a href="./asesst/html-files/Ai.html" class="ai-btn"
-              >مشاهده جزئیات</a
-            >
-          </div>
-        </section>
+        
         <!------ wheader ------>
         <section class="wheater-project">
           <img src="./asesst/imges/wheater.png" alt="" class="wheater-img" />
@@ -226,23 +198,6 @@
 
     <script>
       (() => {
-        const code = document.getElementById('python-code');
-        const lines = document.getElementById('python-lines');
-        const count = document.getElementById('python-count');
-        if (!code || !lines || !count) return;
-        const updateLines = () => {
-          const total = Math.max(1, code.value.split('\\n').length);
-          lines.textContent = Array.from({length: total}, (_, i) => i + 1).join('\\n');
-          count.textContent = total + ' خط';
-        };
-        code.addEventListener('input', updateLines);
-        code.addEventListener('scroll', () => { lines.scrollTop = code.scrollTop; });
-        updateLines();
-      })();
-    </script>
-
-    <script>
-      (() => {
         const screen = document.getElementById('entry-screen');
         const guest = document.getElementById('guest-entry');
         const manager = document.getElementById('manager-entry');
@@ -251,7 +206,8 @@
         const error = document.getElementById('entry-error');
 
         guest.addEventListener('click', () => {
-          screen.remove();
+          const name = window.prompt('نام و نام خانوادگی خود را وارد کنید:');
+          if (name && name.trim()) { sessionStorage.setItem('atomicStudentName', name.trim()); window.location.href = './assignments.html'; }
         });
 
         manager.addEventListener('click', () => {

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ارسال تکلیف | مدرسه انرژی اتمی</title>
+<link rel="stylesheet" href="./asesst/styles/reset.css"><link rel="stylesheet" href="./asesst/styles/styles.css">
+<style>
+body{background:#08111f;color:#eef6ff;min-height:100vh;padding:22px;font-family:inherit}
+.wrap{max-width:760px;margin:28px auto}.card{background:#121f34;border:1px solid #29415f;border-radius:18px;padding:clamp(18px,4vw,32px);margin:18px 0}
+h1{font-size:clamp(25px,5vw,34px);margin:12px 0}p{line-height:2;color:#c2d5eb}
+label{display:block;margin:14px 0 7px;color:#d8e8f8}input,textarea{box-sizing:border-box;width:100%;padding:12px;border:1px solid #34516f;border-radius:10px;background:#071523;color:#fff;font:inherit}
+textarea{min-height:130px;resize:vertical}button,.link{display:inline-block;border:0;border-radius:10px;padding:12px 18px;background:#1267b3;color:white;font:inherit;text-decoration:none;cursor:pointer;margin-top:16px}
+button:disabled{opacity:.55;cursor:wait}.muted{font-size:13px;color:#91abc7}.status{white-space:pre-wrap;line-height:1.8;margin-top:12px}.top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+</style></head>
+<body><main class="wrap">
+<div class="top"><a class="link" href="./index.html">← بازگشت به سایت</a><a class="link" href="./admin.html">ورود استاد</a></div>
+<h1>📚 ارسال تکلیف</h1><p>نام خود را وارد کنید، پاسخ را بنویسید و در صورت نیاز فایل تکلیف را هم پیوست کنید.</p>
+<section class="card"><form id="assignment-form">
+<label for="studentName">نام و نام خانوادگی</label><input id="studentName" maxlength="100" required autocomplete="name" placeholder="مثلاً علی رضایی">
+<label for="assignmentTitle">عنوان تکلیف</label><input id="assignmentTitle" maxlength="150" required placeholder="مثلاً تمرین پایتون جلسه ۳">
+<label for="answerText">متن پاسخ (اختیاری اگر فایل می‌فرستید)</label><textarea id="answerText" maxlength="12000" placeholder="پاسخ خود را اینجا بنویسید..."></textarea>
+<label for="assignmentFile">فایل تکلیف (اختیاری؛ حداکثر 10 مگابایت)</label><input id="assignmentFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.doc,.docx,.py,.zip">
+<p class="muted">فرمت‌های مجاز: PDF، عکس، TXT، DOC/DOCX، PY و ZIP. لطفاً اطلاعات شخصی غیرضروری را داخل فایل قرار ندهید.</p>
+<button id="submitBtn" type="submit">ارسال تکلیف</button><p id="status" class="status" role="status" aria-live="polite"></p>
+</form></section>
+</main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+import { firebaseConfig } from "./firebase-config.js";
+const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app), storage=getStorage(app);
+const form=document.getElementById('assignment-form'), btn=document.getElementById('submitBtn'), status=document.getElementById('status');
+const allowedExt=/\.(pdf|png|jpe?g|webp|txt|docx?|py|zip)$/i;
+form.addEventListener('submit',async e=>{
+ e.preventDefault(); status.textContent='';
+ const name=document.getElementById('studentName').value.trim(), title=document.getElementById('assignmentTitle').value.trim(), answer=document.getElementById('answerText').value.trim(), file=document.getElementById('assignmentFile').files[0];
+ if(!name||!title||(!answer&&!file)){status.textContent='نام، عنوان و متن یا فایل تکلیف را وارد کنید.';return}
+ if(file&&(file.size>10*1024*1024||!allowedExt.test(file.name))){status.textContent='فایل باید از فرمت‌های مجاز و حداکثر ۱۰ مگابایت باشد.';return}
+ btn.disabled=true;status.textContent='در حال ارسال...';
+ try{
+  const credential=await signInAnonymously(auth), user=credential.user;
+  const doc=await addDoc(collection(db,'submissions'),{studentName:name,assignmentTitle:title,answerText:answer,ownerUid:user.uid,status:'new',createdAt:serverTimestamp(),fileName:file?file.name:'',filePath:'',fileType:file?file.type:'',fileSize:file?file.size:0});
+  let filePath='';
+  if(file){filePath=`users/${user.uid}/submissions/${doc.id}/${file.name.replace(/[^\w.\-\u0600-\u06FF]/g,'_')}`;await uploadBytes(ref(storage,filePath),file,{contentType:file.type||'application/octet-stream'});}
+  // ذخیره مسیر فایل بعد از آپلود؛ دانش‌آموز اجازه خواندن سند را ندارد.
+  const {doc:docRef,updateDoc}=await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+  if(filePath) await updateDoc(docRef(db,'submissions',doc.id),{filePath});
+  form.reset();status.textContent='تکلیف با موفقیت ارسال شد. از این صفحه خارج شوید یا آن را ببندید.';
+ }catch(err){console.error(err);status.textContent='ارسال انجام نشد. تنظیمات Firebase و قوانین دسترسی را بررسی کنید. کد خطا: '+(err.code||'unknown');}
+ finally{btn.disabled=false;}
+});
+</script></body></html>

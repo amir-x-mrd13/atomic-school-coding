@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isTeacher() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'amir.mrd186@gmail.com';
+    }
+    match /users/{uid}/submissions/{submissionId}/{fileName} {
+      allow create, update: if request.resource != null
+        && request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.firebase.sign_in_provider == 'anonymous'
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('(application/pdf|image/(jpeg|png|webp)|text/plain|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document|text/x-python|application/zip|application/x-zip-compressed)');
+      allow read: if isTeacher() || (request.auth != null && request.auth.uid == uid);
+    }
+  }
+}

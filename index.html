@@ -7,8 +7,60 @@
     <link rel="stylesheet" href="./asesst/styles/reset.css" />
     <link rel="stylesheet" href="./asesst/styles/styles.css" />
     <link rel="stylesheet" href="./asesst/styles/send-code.css" />
+
+    <style>
+      /* صفحه شروع با تم تیره و آبی هماهنگ با سایت */
+      .entry-screen {
+        position: fixed; inset: 0; z-index: 99999; display: flex;
+        align-items: center; justify-content: center; padding: 24px;
+        background: radial-gradient(ellipse at top, #123b66 0%, #071321 58%, #050b13 100%);
+        color: #eef6ff; font-family: inherit;
+      }
+      .entry-card { width: min(100%, 430px); padding: 34px 28px; border-radius: 22px;
+        border: 1px solid rgba(117,183,255,.25); background: rgba(10,25,43,.88);
+        box-shadow: 0 24px 80px rgba(0,0,0,.42); text-align: center; }
+      .entry-mark { width: 58px; height: 58px; display:grid; place-items:center; margin:0 auto 18px;
+        border-radius: 16px; background: linear-gradient(135deg,#1677d2,#32b8ff); color:#fff;
+        font-size: 30px; box-shadow: 0 8px 28px rgba(30,144,255,.22); }
+      .entry-title { margin: 0 0 10px; font-size: clamp(23px,5vw,30px); font-weight: 800; color:#f3f8ff; }
+      .entry-subtitle { margin: 0 0 28px; color:#a9c3df; font-size:14px; line-height:1.9; }
+      .entry-actions { display:grid; gap:12px; }
+      .entry-btn { width:100%; border:1px solid #267ac4; border-radius:12px; padding:14px 18px;
+        color:#f5faff; background:#1267b3; font:inherit; font-size:15px; font-weight:700;
+        cursor:pointer; transition:transform .15s, background .15s; }
+      .entry-btn:hover { background:#1884dc; transform:translateY(-1px); }
+      .entry-btn.secondary { background:transparent; border-color:#34516f; color:#d8e8f8; }
+      .entry-btn.secondary:hover { background:#102b47; }
+      .entry-error { min-height:22px; margin:12px 0 0; color:#ff9b9b; font-size:13px; }
+      .entry-pin { display:none; margin-top:18px; }
+      .entry-pin input { box-sizing:border-box; width:100%; margin-bottom:10px; padding:13px 12px;
+        border-radius:10px; border:1px solid #345a7e; outline:none; background:#071523;
+        color:#fff; text-align:center; font:inherit; font-size:22px; letter-spacing:8px; }
+      .entry-pin input:focus { border-color:#35a9ff; box-shadow:0 0 0 3px rgba(53,169,255,.14); }
+      .entry-foot { margin-top:22px; color:#6686a7; font-size:11px; }
+      @media (max-width:420px) { .entry-card { padding:28px 20px; } }
+    </style>
   </head>
   <body>
+
+    <section class="entry-screen" id="entry-screen" aria-label="انتخاب نوع ورود">
+      <div class="entry-card">
+        <div class="entry-mark" aria-hidden="true">⚛</div>
+        <h1 class="entry-title">مدرسه انرژی اتمی</h1>
+        <p class="entry-subtitle">برای ورود، یکی از گزینه‌های زیر را انتخاب کنید.</p>
+        <div class="entry-actions">
+          <button class="entry-btn" id="guest-entry" type="button">ورود به‌عنوان مهمان</button>
+          <button class="entry-btn secondary" id="manager-entry" type="button">ورود مدیر</button>
+        </div>
+        <form class="entry-pin" id="manager-pin-form">
+          <label for="manager-pin" style="display:block;margin-bottom:10px;color:#b9d3ed;font-size:14px">رمز پنج‌رقمی مدیر را وارد کنید</label>
+          <input id="manager-pin" type="password" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="off" aria-label="رمز پنج‌رقمی مدیر" />
+          <button class="entry-btn" type="submit">تأیید رمز</button>
+        </form>
+        <p class="entry-error" id="entry-error" role="status" aria-live="polite"></p>
+        <p class="entry-foot">دسترسی ساده برای دانش‌آموزان و مدیر سایت</p>
+      </div>
+    </section>
     <!------------------  Header  ------------------>
     <header class="Header">
       <!-- navbar -->
@@ -51,6 +103,9 @@
       <p class="main-up-text">
         ! برای هر پروژه، سورس کد آن به صورت کاملا رایگان موجود است
       </p>
+      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:18px auto 26px;padding:0 12px">
+        <a href="./assignments.html" style="display:inline-block;background:#1267b3;color:#fff;text-decoration:none;padding:12px 20px;border-radius:12px;font-weight:700">📚 ارسال تکلیف</a>
+      </div>
 
       <!-- main navbar -->
       <div class="main-navbar">
@@ -117,8 +172,8 @@
           <p>کدت رو اینجا قرار بده و برای بررسی ارسال کن.</p>
         </div>
 
-        <!-- برای ارسال واقعی، آدرس YOUR_EMAIL@example.com را با ایمیل خودت عوض کن. -->
-        <form class="send-code-form" action="https://formsubmit.co/YOUR_EMAIL@example.com" method="POST">
+        <!-- فرم ارسال از FormSubmit استفاده می‌کند؛ برای فعال‌شدن، ارسال اولیه و تأیید ایمیل لازم است. -->
+        <form class="send-code-form" action="https://formsubmit.co/amir.mrd186@gmail.com" method="POST">
           <input type="hidden" name="_subject" value="پروژه جدید - سایت مدرسه انرژی اتمی">
           <input type="hidden" name="_template" value="table">
           <input type="hidden" name="_captcha" value="true">
@@ -176,6 +231,39 @@
         code.addEventListener('input', updateLines);
         code.addEventListener('scroll', () => { lines.scrollTop = code.scrollTop; });
         updateLines();
+      })();
+    </script>
+
+    <script>
+      (() => {
+        const screen = document.getElementById('entry-screen');
+        const guest = document.getElementById('guest-entry');
+        const manager = document.getElementById('manager-entry');
+        const pinForm = document.getElementById('manager-pin-form');
+        const pin = document.getElementById('manager-pin');
+        const error = document.getElementById('entry-error');
+
+        guest.addEventListener('click', () => {
+          screen.remove();
+        });
+
+        manager.addEventListener('click', () => {
+          pinForm.style.display = 'block';
+          error.textContent = '';
+          pin.focus();
+        });
+
+        pinForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+          if (pin.value === '65428') {
+            // پنل مدیریت موجود در فایل admin.html باز می‌شود.
+            window.location.href = './admin.html';
+          } else {
+            error.textContent = 'رمز واردشده درست نیست. دوباره تلاش کنید.';
+            pin.value = '';
+            pin.focus();
+          }
+        });
       })();
     </script>
     <script src="./main.js"></script>

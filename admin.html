@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>پنل استاد | مدرسه انرژی اتمی</title><link rel="stylesheet" href="./asesst/styles/reset.css"><link rel="stylesheet" href="./asesst/styles/styles.css">
+<style>
+body{background:#08111f;color:#eef6ff;min-height:100vh;padding:20px;font-family:inherit}.wrap{max-width:1100px;margin:24px auto}.card{background:#121f34;border:1px solid #29415f;border-radius:16px;padding:20px;margin:16px 0}h1{font-size:clamp(25px,5vw,34px);margin:12px 0}h2{font-size:20px;margin-bottom:12px}p{color:#c2d5eb;line-height:1.9}label{display:block;margin:12px 0 6px}input,textarea,select{box-sizing:border-box;width:100%;padding:11px;border:1px solid #34516f;border-radius:9px;background:#071523;color:#fff;font:inherit}textarea{min-height:100px}button,.link{display:inline-block;border:0;border-radius:9px;padding:10px 15px;background:#1267b3;color:white;font:inherit;text-decoration:none;cursor:pointer;margin:6px 4px 6px 0}button.secondary{background:#344861}.hidden{display:none!important}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}.submission{border:1px solid #29415f;border-radius:13px;padding:16px;background:#0c192a}.meta{font-size:13px;color:#91abc7}.status{white-space:pre-wrap;line-height:1.8}.pill{display:inline-block;background:#183e60;border-radius:999px;padding:4px 9px;font-size:12px}.answer{white-space:pre-wrap;overflow-wrap:anywhere;color:#e6f0fb}
+</style></head><body><main class="wrap">
+<a class="link" href="./index.html">← بازگشت به سایت</a><h1>⚛️ پنل استاد</h1><p>با حساب استاد وارد شوید تا تکالیف ارسال‌شده را ببینید، فایل‌ها را باز کنید و نمره و بازخورد ثبت کنید.</p>
+<section id="loginCard" class="card"><h2>ورود استاد</h2><form id="loginForm"><label for="email">ایمیل استاد</label><input id="email" type="email" required autocomplete="username"><label for="password">رمز عبور Firebase</label><input id="password" type="password" required autocomplete="current-password"><button type="submit">ورود</button></form><p id="loginStatus" class="status" role="status"></p></section>
+<section id="dashboard" class="hidden"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h2>تکالیف دانش‌آموزان</h2><button id="refreshBtn">بارگذاری دوباره</button><button id="logoutBtn" class="secondary">خروج</button></div><p id="dashStatus" class="status" role="status"></p><div id="submissions" class="grid"></div></div></section>
+</main>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {getFirestore,collection,getDocs,query,orderBy,doc,updateDoc} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import {getStorage,ref,getDownloadURL} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+import {firebaseConfig} from "./firebase-config.js";
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),storage=getStorage(app);
+const loginCard=document.getElementById('loginCard'),dashboard=document.getElementById('dashboard'),loginStatus=document.getElementById('loginStatus'),dashStatus=document.getElementById('dashStatus'),list=document.getElementById('submissions');
+document.getElementById('loginForm').addEventListener('submit',async e=>{e.preventDefault();loginStatus.textContent='در حال ورود...';try{await signInWithEmailAndPassword(auth,document.getElementById('email').value.trim(),document.getElementById('password').value)}catch(err){loginStatus.textContent='ورود ناموفق بود. ایمیل، رمز و فعال بودن Email/Password را بررسی کنید ('+(err.code||'unknown')+').'}});
+onAuthStateChanged(auth,user=>{if(user&&!user.isAnonymous){loginCard.classList.add('hidden');dashboard.classList.remove('hidden');loadSubmissions()}else{loginCard.classList.remove('hidden');dashboard.classList.add('hidden')}});
+document.getElementById('logoutBtn').addEventListener('click',()=>signOut(auth));
+document.getElementById('refreshBtn').addEventListener('click',loadSubmissions);
+async function loadSubmissions(){
+ list.replaceChildren();dashStatus.textContent='در حال دریافت تکالیف...';
+ try{
+  const snap=await getDocs(query(collection(db,'submissions'),orderBy('createdAt','desc')));
+  if(snap.empty){dashStatus.textContent='هنوز تکلیفی ارسال نشده است.';return}
+  dashStatus.textContent=`تعداد تکالیف: ${snap.size}`;
+  for(const item of snap.docs){const d=item.data(),card=document.createElement('article');card.className='submission';
+   const title=document.createElement('h2');title.textContent=d.assignmentTitle||'بدون عنوان';card.append(title);
+   const name=document.createElement('p');name.textContent='دانش‌آموز: '+(d.studentName||'—');card.append(name);
+   const date=document.createElement('p');date.className='meta';date.textContent='زمان ارسال: '+(d.createdAt?.toDate?.().toLocaleString('fa-IR')||'—');card.append(date);
+   const answer=document.createElement('p');answer.className='answer';answer.textContent=d.answerText||'متن پاسخی ارسال نشده.';card.append(answer);
+   if(d.filePath){const a=document.createElement('a');a.className='link';a.href='#';a.textContent='باز کردن فایل: '+(d.fileName||'تکلیف');a.addEventListener('click',async ev=>{ev.preventDefault();try{a.href=await getDownloadURL(ref(storage,d.filePath));a.target='_blank';a.rel='noopener';a.click()}catch(err){dashStatus.textContent='دریافت فایل ناموفق بود: '+(err.code||'unknown')}});card.append(a)}
+   const gradeLabel=document.createElement('label');gradeLabel.textContent='نمره';const grade=document.createElement('input');grade.type='number';grade.min='0';grade.max='100';grade.step='0.25';grade.value=d.grade??'';gradeLabel.append(grade);card.append(gradeLabel);
+   const feedbackLabel=document.createElement('label');feedbackLabel.textContent='بازخورد استاد';const feedback=document.createElement('textarea');feedback.maxLength=3000;feedback.value=d.feedback||'';feedbackLabel.append(feedback);card.append(feedbackLabel);
+   const save=document.createElement('button');save.textContent='ذخیره نمره و بازخورد';save.addEventListener('click',async()=>{if(grade.value!==''&&(Number(grade.value)<0||Number(grade.value)>100)){dashStatus.textContent='نمره باید بین ۰ تا ۱۰۰ باشد.';return}save.disabled=true;try{await updateDoc(doc(db,'submissions',item.id),{grade:grade.value===''?null:Number(grade.value),feedback:feedback.value.trim(),status:'reviewed'});dashStatus.textContent='نمره و بازخورد ذخیره شد.'}catch(err){dashStatus.textContent='ذخیره ناموفق بود: '+(err.code||'unknown')}finally{save.disabled=false}});card.append(save);list.append(card);
+  }
+ }catch(err){dashStatus.textContent='دریافت تکالیف ناموفق بود. مطمئن شوید حساب شما در فهرست استاد مجاز است و قوانین Firestore را منتشر کرده‌اید. ('+(err.code||'unknown')+')'}
+}
+</script></body></html>

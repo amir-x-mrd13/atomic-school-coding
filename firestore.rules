@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isTeacher() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'amir.mrd186@gmail.com';
+    }
+    match /submissions/{submissionId} {
+      // دانش‌آموز فقط سندی برای شناسه ورود ناشناس خودش ایجاد می‌کند؛ فهرست برای دانش‌آموزان قابل خواندن نیست.
+      allow create: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'anonymous'
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'studentName','assignmentTitle','answerText','ownerUid','status',
+          'createdAt','fileName','filePath','fileType','fileSize'
+        ])
+        && request.resource.data.studentName is string
+        && request.resource.data.studentName.size() > 0
+        && request.resource.data.studentName.size() <= 100
+        && request.resource.data.assignmentTitle is string
+        && request.resource.data.assignmentTitle.size() > 0
+        && request.resource.data.assignmentTitle.size() <= 150
+        && request.resource.data.answerText is string
+        && request.resource.data.answerText.size() <= 12000
+        && request.resource.data.status == 'new'
+        && request.resource.data.fileSize is int
+        && request.resource.data.fileSize <= 10485760;
+      allow read: if isTeacher();
+      // صاحب ارسال می‌تواند فقط یک بار مسیر فایل خودش را بعد از آپلود ثبت کند.
+      allow update: if (
+          request.auth != null
+          && request.auth.uid == resource.data.ownerUid
+          && resource.data.filePath == ''
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['filePath'])
+          && request.resource.data.filePath is string
+          && request.resource.data.filePath.matches('users/' + request.auth.uid + '/submissions/' + submissionId + '/.*')
+        ) || (
+          isTeacher()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['grade','feedback','status'])
+          && (request.resource.data.grade == null ||
+              (request.resource.data.grade is number &&
+               request.resource.data.grade >= 0 && request.resource.data.grade <= 100))
+          && request.resource.data.feedback is string
+          && request.resource.data.feedback.size() <= 3000
+          && request.resource.data.status == 'reviewed'
+        );
+      allow delete: if isTeacher();
+    }
+  }
+}
